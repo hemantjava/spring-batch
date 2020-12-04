@@ -15,10 +15,12 @@ import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 
 import javax.persistence.EntityManagerFactory;
 import java.util.concurrent.TimeUnit;
@@ -37,10 +39,12 @@ public class BatchConfiguration {
     @Autowired
     private EntityManagerFactory emf;
 
+    @Value("classPath:sample-data.csv")
+    private Resource inputResource;
     @Bean
     public FlatFileItemReader<User> reader ( ) {
         FlatFileItemReader reader = new FlatFileItemReader<>();
-        reader.setResource(new FileSystemResource("./sample-data.csv"));
+        reader.setResource(inputResource);
         reader.setLinesToSkip(1);
 
         DefaultLineMapper lineMapper = new DefaultLineMapper<>();
@@ -70,8 +74,6 @@ public class BatchConfiguration {
             User user = User.builder().lastName(item.getLastName().toLowerCase())
                     .firstName(item.getFirstName().toUpperCase())
                     .build();
-            TimeUnit.SECONDS.sleep(2);
-            log.debug(user+": Inserted");
             return user;
         };
     }
@@ -109,9 +111,9 @@ public class BatchConfiguration {
             @Override
             public void afterJob (JobExecution jobExecution) {
                 if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
-                    log.info("!!! JOB FINISHED! Time to verify the results");
+                    log.info("!!! JOB FINISHED! Time to verify the results Inserted: "+userRepository.count());
                     userRepository.findAll().
-                            forEach(person -> log.info("Found <" + person + "> in the database."));
+                            forEach(person -> log.info("Found <" + person + "> in the database. "));
                 }
             }
         };
